@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='mizdrak',
     maintainer_email='markomizdrak@gmail.com',
-    description='simple car model,
+    description='simple car model',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
