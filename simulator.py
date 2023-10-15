@@ -1,51 +1,61 @@
-# Authors : Gastone Pietro Rosati Papini
-# Date    : 09/08/2022
+# Author : Marko Mizdrak
+# Date    : 15/10/2023
 # License : MIT
-import math
-import signal
 
-from pydrivingsim import World, Vehicle, TrafficLight, Agent, Target, TrafficCone
+import rclpy
+from rclpy.node import Node
+from pydrivingsim import Vehicle
 
-class GracefulKiller:
-  kill_now = False
-  def __init__(self):
-    signal.signal(signal.SIGINT, self.exit_gracefully)
-    signal.signal(signal.SIGTERM, self.exit_gracefully)
+# TODO get message definitions
+from your_package.msg import ControlCommand
+from your_package.msg import VehicleState
 
-  def exit_gracefully(self, *args):
-    self.kill_now = True
+class VehicleNode(Node):
+    def __init__(self):
+        super().__init__('vehicle_node')
+        self.subscription = self.create_subscription(
+            ControlCommand,
+            'control_command',
+            self.control_command_callback,
+            10
+        )
+        self.subscription  # prevent unused variable warning
+        
+        self.publisher_ = self.create_publisher(VehicleState, 'vehicle_state', 10)
+        
+        self.vehicle_state = VehicleState()
+        self.vehicle = Vehicle()
 
-def main():
-    target = Target()
-    target.set_pos((182, -1))
+        # TODO set car start pose
+        
+    def control_command_callback(self, msg):
+        self.get_logger().info(f'Received control command: Steering Angle = {msg.steering_angle}, Accelerator Pedal Position = {msg.accelerator_pedal}')
+        
+        # TODO take in messages and convert to action suitable for vehicle model
 
-    cone = TrafficCone()
-    cone.set_pos((1.0,0))
-    cone = TrafficCone()
-    cone.set_pos((1.0,2))
-    cone = TrafficCone()
-    cone.set_pos((1.0,-2))
+        # interface with vehicle as follows
+        action = (0.1, 0) 
+        self.vehicle.control(action)
+        self.vehicle.update()
 
-    trafficlight = TrafficLight()
-    trafficlight.set_pos((160,-3))
+        self.vehicle_state, _ = self.vehicle.get_state()
 
-    vehicle = Vehicle()
-    vehicle.set_screen_here()
-    vehicle.set_pos_ang((0,-1,0))
+        # TODO convert state to correct form to publish message 
 
-    agent = Agent(vehicle)
 
-    killer = GracefulKiller()
-    while not killer.kill_now and World().loop:
-        agent.compute()
-        action = agent.get_action()
+        
+        self.publisher_.publish(self.vehicle_state)
+        self.get_logger().info(f'Published vehicle state: Speed = {self.vehicle_state.speed}, Position = {self.vehicle_state.position}')
 
-        vehicle.set_screen_here()
-        vehicle.control([action[0], action[1]])
+def main(args=None):
+    rclpy.init(args=args)
+    vehicle_node = VehicleNode()
+    rclpy.spin(vehicle_node)
+    vehicle_node.destroy_node()
+    rclpy.shutdown()
 
-        World().update()
+if __name__ == '__main__':
+    main()
 
-    agent.terminate()
-    World().exit()
 
-main()
+
