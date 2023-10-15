@@ -27,7 +27,7 @@ class VehicleNode(Node):
 
         self.vehicle = Vehicle()
 
-        # TODO set car start pose
+        # TODO set car start initial state if desired...
         
     def control_command_callback(self, msg):
         self.get_logger().info(f'Received control command: Steering Angle = {msg.steering_angle}, Accelerator Pedal Position = {msg.accelerator_pedal}')
@@ -37,8 +37,9 @@ class VehicleNode(Node):
 
         # interface with vehicle as follows
         action = (0.1, 0) 
-        self.vehicle.control(action)
-        self.vehicle.update()
+        self.vehicle.dt = 0.001 # how long to execute the action
+        self.vehicle.control(action) # this sets the action
+        self.vehicle.update() # this integrates forward using the vehicle model with the specified action for the dt
 
         vehicle_state, _ = self.vehicle.get_state()
 
@@ -49,7 +50,7 @@ class VehicleNode(Node):
         state_string = vehicle_state.tostring()
         
         self.publisher_.publish(state_string)
-        self.get_logger().info(f'Published vehicle state: Speed = {self.vehicle_state.speed}, Position = {self.vehicle_state.position}')
+        
 
 def main(args=None):
     rclpy.init(args=args)
