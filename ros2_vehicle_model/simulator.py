@@ -8,7 +8,11 @@ from pydrivingsim import Vehicle
 
 # TODO get message definitions
 from std_msgs.msg import String
+from nav_msgs.msg import Odometry
 
+import math
+import tf.transformations as tf_trans
+from geometry_msgs.msg import Pose, Twist, Quaternion
 
 class VehicleNode(Node):
     def __init__(self):
@@ -21,7 +25,7 @@ class VehicleNode(Node):
         )
         self.subscription  # prevent unused variable warning
         
-        self.publisher_ = self.create_publisher(String, 'vehicle_state', 10)
+        self.publisher_ = self.create_publisher(Odometry, 'odom', 10)
         
         self.vehicle_state = String() # message
 
@@ -30,9 +34,7 @@ class VehicleNode(Node):
         # TODO set car start initial state if desired...
         
     def control_command_callback(self, msg):
-        self.get_logger().info(f'Received control command: Steering Angle = {msg.steering_angle}, Accelerator Pedal Position = {msg.accelerator_pedal}')
-        print(msg)
-
+        
         # TODO take in messages and convert to action suitable for vehicle model
 
         # interface with vehicle as follows
@@ -43,13 +45,20 @@ class VehicleNode(Node):
 
         vehicle_state, _ = self.vehicle.get_state()
 
+        odom = Odometry()
+        # Set position
+        odom.pose.pose.position.x = state[0]
+        odom.pose.pose.position.y = state[1]
 
+        # Set orientation
+        quaternion = tf_trans.quaternion_from_euler(0, 0, state[2])
+        odom.pose.pose.orientation = Quaternion(*quaternion)
 
-        # TODO convert state to correct form to publish message 
+        # Set linear velocity
+        odom.twist.twist.linear.x = state.v * math.cos(state[2])
+        odom.twist.twist.linear.y = state.v * math.sin(state[2])
 
-        state_string = vehicle_state.tostring()
-        
-        self.publisher_.publish(state_string)
+        self.publisher_.publish(odom)
         
 
 def main(args=None):
